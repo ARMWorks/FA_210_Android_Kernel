@@ -1,0 +1,32 @@
+#!/bin/bash
+
+DESTDIR=/tmp/FriendlyARM/mini210
+ADSTDIR=${DESTDIR}/android
+LDSTDIR=${DESTDIR}/linux
+
+mkdir -p ${ADSTDIR} ${LDSTDIR}
+
+CPU_JOB_NUM=$(grep processor /proc/cpuinfo | awk '{field=$NF};END{print field+1}')
+
+make distclean
+
+# build zImage for android
+cp mini210_android_defconfig .config && \
+   make -j${CPU_JOB_NUM} &&
+   cp -vf arch/arm/boot/zImage ${ADSTDIR}/zImage || exit 1
+
+cp mini210-tvp5150_android_defconfig .config && \
+	make -j${CPU_JOB_NUM} &&
+	cp -vf arch/arm/boot/zImage ${ADSTDIR}/zImage_tvp5150 || exit 1
+
+make distclean
+
+# build zImage for linux
+cp mini210_linux_defconfig .config && \
+	make -j${CPU_JOB_NUM} &&
+	cp -vf arch/arm/boot/zImage ${LDSTDIR}/zImage || exit 1
+
+cp mini210-tvp5150_linux_defconfig .config && \
+	make -j${CPU_JOB_NUM} &&
+	cp -vf arch/arm/boot/zImage ${LDSTDIR}/zImage_tvp5150 || exit 1
+
