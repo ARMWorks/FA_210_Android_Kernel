@@ -1887,10 +1887,12 @@ static void __init mini210_machine_init(void)
 #ifdef CONFIG_FB_S3C_MINI210
 	{
 		struct s3cfb_lcd *mlcd = mini210_get_lcd();
+#if 0
 		if (!(mlcd->args & 0x0f)) {
 			if (readl(S5PV210_GPF0_BASE + 0x184) & 0x10)
 				mlcd->args |= (1 << 7);
 		}
+#endif
 		mini210_fb_data.lcd = mlcd;
 		s3c_fb_set_platdata(&mini210_fb_data);
 	}

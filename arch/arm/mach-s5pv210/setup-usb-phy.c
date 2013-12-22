@@ -84,8 +84,10 @@ int s5p_usb_phy_init(struct platform_device *pdev, int type)
 	}
 
 	if (type == S5P_USB_PHY_HOST) {
+#if 0	/* Always do USB reset to fix issue on soft reboot */
 		if (readl(S5P_USB_PHY_CONTROL) & (0x1<<1))
 			return -1;
+#endif
 
 		__raw_writel(__raw_readl(S5P_USB_PHY_CONTROL) | (0x1<<1),
 				S5P_USB_PHY_CONTROL);

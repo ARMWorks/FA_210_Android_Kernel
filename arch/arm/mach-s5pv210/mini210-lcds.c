@@ -29,7 +29,7 @@ static struct s3cfb_lcd wvga_w50 = {
 	.p_width = 108,
 	.p_height = 64,
 	.bpp = 32,
-	.freq = 75,
+	.freq = 61,
 
 	.timing = {
 		.h_fp = 40,
@@ -55,7 +55,7 @@ static struct s3cfb_lcd wvga_a70 = {
 	.p_width = 152,
 	.p_height = 90,
 	.bpp = 32,
-	.freq = 85,
+	.freq = 65,
 
 	.timing = {
 		.h_fp = 40,
