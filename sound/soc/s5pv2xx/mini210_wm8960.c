@@ -1,5 +1,7 @@
-# Driver code taken from:
-# https://github.com/5victor/linux-tiny210v2/blob/master/sound/soc/s5pv2xx/mini210_wm8960.c
+/*
+ * Driver code taken from:
+ * https://github.com/5victor/linux-tiny210v2/blob/master/sound/soc/s5pv2xx/mini210_wm8960.c
+ */
 
 #include <linux/kernel.h>
 #include <linux/module.h>
