@@ -72,12 +72,7 @@ else
 obj-m += goodix_touch.o
 endif  #FA
 endif
-
-ifneq ($(wildcard drivers/input/touchscreen/ft5x06_ts.c),)
-ifeq ($(FA),1)
+#FT5x06 driver actually exists!!
 obj-$(CONFIG_TOUCHSCREEN_FT5X0X)	+= ft5x06_ts.o
-else
-obj-m += ft5x06_ts.o
-endif  #FA
-endif
+
 

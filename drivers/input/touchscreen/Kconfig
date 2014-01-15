@@ -250,6 +250,16 @@ config TOUCHSCREEN_FT5X0X
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called ft5x06_ts.ko.
+	  
+config FT5X0X_MULTITOUCH
+bool "FT5x0x Multitouch support for android"
+	depends on TOUCHSCREEN_FT5X0X
+	default N
+	help
+	  Say Y here to enable Multitouch support for the FT5x0x 
+	  touchscreen on the mini210 boards running on android
+	  Choose N if you are using linux
+	  
 
 config TOUCHSCREEN_GUNZE
 	tristate "Gunze AHL-51S touchscreen"
