@@ -58,6 +58,7 @@ S5P_NAND_MLC_SRC = $(shell ls drivers/mtd/nand/s5p_nand_mlc.c 2>/dev/null)
 ifeq ($(S5P_NAND_MLC_SRC),)
 obj-y			+= s5p_nand_mlc.fo
 else
+obj-y     += s5p_phy_init_ext.o
 obj-y			+= s5p_nand_mlc.o
 endif
 endif
