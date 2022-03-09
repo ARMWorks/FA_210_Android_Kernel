@@ -227,6 +227,15 @@ config TOUCHSCREEN_IF
 	bool
 	default y if TOUCHSCREEN_1WIRE
 
+config AUTO_REPORT_1WIRE_INPUT
+	tristate "Auto report 1wire data to input system"
+	depends on TOUCHSCREEN_IF
+	default n
+	help
+	  Say Y here to enable auto report 1wire touch data to input system.
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_GOODIX
 	tristate "Goodix GT80X multi-touch driver"
 	depends on MACH_MINI210
@@ -239,6 +248,37 @@ config TOUCHSCREEN_GOODIX
 	  To compile this driver as a module, choose M here: the
 	  module will be called goodix_touch.ko.
 
+config TOUCHSCREEN_GT9XX
+	tristate "GOODIX GT9xx touchscreen"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you have the GOODIX GT9xx touchscreen.
+
+	  If unsure, say N.
+
+choice
+depends on TOUCHSCREEN_GT9XX
+prompt "Select Touch Protocol"
+default TOUCHSCREEN_GOODIX_MT_SLOT
+
+config  TOUCHSCREEN_GOODIX_MT_SYNC
+	bool "Multi-touch Protocol A"
+	help
+	  This enables the stateless type A protocol for QT + tslib.
+
+config  TOUCHSCREEN_GOODIX_MT_SLOT
+	bool "Multi-touch Protocol B"
+	help
+	  This enables the stateful type B slot protocol for Android.
+
+config  TOUCHSCREEN_GOODIX_SINGLE
+	bool "Single-touch Protocol"
+	help
+	  This disables multi-touch mode for Debian (xserver-xorg-input-evdev).
+
+endchoice
+
 config TOUCHSCREEN_FT5X0X
 	tristate "FocalTech ft5x0x TouchScreen driver"
 	depends on MACH_MINI210
@@ -250,16 +290,6 @@ config TOUCHSCREEN_FT5X0X
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called ft5x06_ts.ko.
-	  
-config FT5X0X_MULTITOUCH
-bool "FT5x0x Multitouch support for android"
-	depends on TOUCHSCREEN_FT5X0X
-	default N
-	help
-	  Say Y here to enable Multitouch support for the FT5x0x 
-	  touchscreen on the mini210 boards running on android
-	  Choose N if you are using linux
-	  
 
 config TOUCHSCREEN_GUNZE
 	tristate "Gunze AHL-51S touchscreen"

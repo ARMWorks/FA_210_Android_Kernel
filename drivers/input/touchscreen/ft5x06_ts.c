@@ -37,14 +37,14 @@
 #include "ft5x06_ts.h"
 
 /* NOTE: support mulititouch only */
-//#define CONFIG_FT5X0X_MULTITOUCH		0
+#define CONFIG_FT5X0X_MULTITOUCH		1
 
-#define TOUCH_MAX_X						0x800
-#define TOUCH_MAX_Y						0x480
+#define TOUCH_MAX_X						0x700
+#define TOUCH_MAX_Y						0x400
 
 static int swap_xy = 0;
 static int scal_xy = 0;
-static char phys[] = "input(ts)";
+
 
 /*---------------------------------------------------------
  * Chip I/O operations
@@ -285,7 +285,7 @@ static int ft5x0x_read_data(struct ft5x0x_ts_data *ts) {
 	}
 #endif
 
-	event->pressure = 200;
+	event->pressure = 64;
 
 	return 0;
 }
@@ -356,11 +356,18 @@ static int ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	int err = -EINVAL;
 
 	ctp_id = mini210_get_ctp();
-	if (ctp_id != CTP_FT5306 && ctp_id != CTP_FT5406) {
-		return -ENODEV;
+	if (ctp_id == CTP_FT5306) {
+		/* nothing */
+
 	} else if (ctp_id == CTP_FT5406) {
 		swap_xy = 1;
-		scal_xy = 0;
+
+	} else if (ctp_id == CTP_AUTO) {
+		/* workaround for S702 */
+		ctp_id = CTP_FT5406;
+
+	} else {
+		return -ENODEV;
 	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -420,6 +427,7 @@ static int ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	set_bit(EV_SYN, input_dev->evbit);
 	set_bit(EV_ABS, input_dev->evbit);
 	set_bit(EV_KEY, input_dev->evbit);
+	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
 
 #ifdef CONFIG_FT5X0X_MULTITOUCH
 	set_bit(ABS_MT_TRACKING_ID, input_dev->absbit);
@@ -445,7 +453,6 @@ static int ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id
 #endif
 
 	input_dev->name = FT5X0X_NAME;
-	input_dev->phys = phys;
 	input_dev->id.bustype = BUS_I2C;
 	input_dev->id.vendor = 0x12FA;
 	input_dev->id.product = 0x2143;
@@ -491,6 +498,8 @@ static int ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id
 #endif
 
 	enable_irq(client->irq);
+
+	panel_set_touch_id(ctp_id);
 
 	dev_info(&client->dev, "FocalTech ft5x0x %s TouchScreen initialized\n",
 			(ctp_id == CTP_FT5406) ? "7" : "4.3");

@@ -3127,6 +3127,17 @@ ident_done:
 		chip->badblockpos = NAND_SMALL_BADBLOCK_POS;
 
 	/*
+	 * Check for Samsung E-die SLC NAND (K9K8G09U0E)
+	 * p.14: Max number of Partial Program Cycles = 1 cycles
+	 * p.39: ID = EC D3 51 95 59
+	 */
+	if (!(chip->cellinfo & NAND_CI_CELLTYPE_MSK) &&
+			*maf_id == NAND_MFR_SAMSUNG &&
+			(id_data[4] & 0x03)) {
+		chip->options |= NAND_NO_SUBPAGE_WRITE;
+	}
+
+	/*
 	 * Bad block marker is stored in the last page of each block
 	 * on Samsung and Hynix MLC devices; stored in first two pages
 	 * of each block on Micron devices with 2KiB pages and on
@@ -3491,6 +3502,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 		}
 	}
 	chip->subpagesize = mtd->writesize >> mtd->subpage_sft;
+	printk(KERN_INFO "NAND subpage size: %d bytes\n", chip->subpagesize);
 
 	/* Initialize state */
 	chip->state = FL_READY;

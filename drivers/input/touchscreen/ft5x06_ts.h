@@ -19,9 +19,9 @@
 #define FT5X0X_NAME				"ft5x0x_ts"
 #define FT5X0X_PT_MAX			5
 
-#if 1
-#define SCREEN_MAX_X			800
-#define SCREEN_MAX_Y			480
+#if 0
+#define SCREEN_MAX_X			480
+#define SCREEN_MAX_Y			272
 #define PRESS_MAX				255
 #endif
 

@@ -152,6 +152,22 @@ config YAFFS_DISABLE_BACKGROUND
 
 	 If unsure, say N.
 
+config YAFFS_DISABLE_SHORT_CACHE
+	bool "Disable the short operation cache"
+	depends on YAFFS_FS
+	default n
+	help
+	 If this is set, then the short operation cache is disabled.
+	 If unsure, say N.
+
+config YAFFS_CHECKPT_ON_REMOUNT
+	bool "Save checkpoint on remount"
+	depends on YAFFS_FS
+	default n
+	help
+	 If this is set, then yaffs checkpoint will be saved on remount.
+	 If unsure, say N.
+
 config YAFFS_XATTR
 	bool "Enable yaffs2 xattr support"
 	depends on YAFFS_FS

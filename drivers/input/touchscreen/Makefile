@@ -64,6 +64,8 @@ obj-$(CONFIG_TOUCHSCREEN_TPS6507X)	+= tps6507x-ts.o
 obj-$(CONFIG_TOUCHSCREEN_EGALAX)        += egalax_i2c.o
 obj-$(CONFIG_TOUCHSCREEN_1WIRE)		+= mini210_1wire_host.o
 obj-$(CONFIG_TOUCHSCREEN_IF)		+= ts-if.o
+obj-$(CONFIG_TOUCHSCREEN_FT5X0X)	+= ft5x06_ts.o
+obj-$(CONFIG_TOUCHSCREEN_GT9XX)		+= gt9xx.o gt9xx_update.o goodix_tool.o
 
 ifneq ($(wildcard drivers/input/touchscreen/goodix_touch.c),)
 ifeq ($(FA),1)
@@ -72,7 +74,4 @@ else
 obj-m += goodix_touch.o
 endif  #FA
 endif
-#FT5x06 driver actually exists!!
-obj-$(CONFIG_TOUCHSCREEN_FT5X0X)	+= ft5x06_ts.o
-
 

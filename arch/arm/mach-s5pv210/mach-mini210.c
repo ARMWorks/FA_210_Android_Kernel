@@ -439,11 +439,26 @@ static struct platform_device s3c_device_gpio_btns = {
 };
 #endif
 
-static struct platform_device s3c_device_1wire = {
-	.name			= "mini210_1wire",
-	.id				= -1,
-	.num_resources	= 0,
+#if defined(CONFIG_TOUCHSCREEN_1WIRE)
+#include <plat/touchscreen-one-wire.h>
+
+static struct i2c_board_info __initdata onewire_i2c_bdi = {
+	I2C_BOARD_INFO("ONEWIRE", (0x5e>>1)),
 };
+
+static struct ts_onewire_platform_data onewire_ts_pdata = {
+	.timer_irq	= IRQ_TIMER3,
+	.gpio		= S5PV210_GPH1(2),
+};
+
+static struct platform_device onewire_device = {
+	.name		= "onewire_ts",
+	.id			= -1,
+	.dev		= {
+		.platform_data	= &onewire_ts_pdata,
+	},
+};
+#endif
 
 static struct platform_device mini210_device_adc = {
 	.name			= "mini210_adc",
@@ -754,11 +769,11 @@ static void lcd_cfg_gpio(struct platform_device *pdev)
 	/* mDNIe SEL: why we shall write 0x2 ? */
 	writel(0x2, S5P_MDNIE_SEL);
 
-	/* drive strength to 2x ....(max for smdkv210) */
-	writel(0xaaaaaaaa, S5PV210_GPF0_BASE + 0xc);
-	writel(0xaaaaaaaa, S5PV210_GPF1_BASE + 0xc);
-	writel(0xaaaaaaaa, S5PV210_GPF2_BASE + 0xc);
-	writel(0x000000aa, S5PV210_GPF3_BASE + 0xc);
+	/* drive strength to 1x ....(max for smdkv210) */
+	writel(0x00000080, S5PV210_GPF0_BASE + 0xc);
+	writel(0x00000000, S5PV210_GPF1_BASE + 0xc);
+	writel(0x00000000, S5PV210_GPF2_BASE + 0xc);
+	writel(0x00000000, S5PV210_GPF3_BASE + 0xc);
 }
 
 static int lcd_backlight_on(struct platform_device *pdev)
@@ -947,7 +962,9 @@ static struct platform_device *mini210_devices[] __initdata = {
 #ifdef CONFIG_KEYBOARD_GPIO
     &s3c_device_gpio_btns,
 #endif
-	&s3c_device_1wire,
+#if defined(CONFIG_TOUCHSCREEN_1WIRE)
+	&onewire_device,
+#endif
 	&mini210_device_adc,
 #ifdef CONFIG_TOUCHSCREEN_S3C2410
 	&s3c_device_ts,
@@ -1483,7 +1500,7 @@ static int __init dm9000_set_mac(char *str) {
 		memcpy(mini210_dm9000_platdata.param_addr, addr, 6);
 	}
 
-	return 1;
+	return 0;
 }
 
 __setup("ethmac=", dm9000_set_mac);
@@ -1564,6 +1581,19 @@ static struct goodix_i2c_platform_data goodix_pdata = {
 };
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_GT9XX
+#include <plat/ctouch.h>
+#include <plat/gt9xx_touch.h>
+static struct gt9xx_i2c_platform_data gt9xx_pdata = {
+	.gpio_reset		= -1,
+	.gpio_irq		= S5PV210_GPH1(6),
+	.irq_cfg		= S3C_GPIO_SFN(0xf),
+	.screen_max_x	= 800,
+	.screen_max_x	= 480,
+	.pressure_max	= 255,
+};
+#endif
+
 #ifdef CONFIG_TOUCHSCREEN_FT5X0X
 #include <plat/ft5x0x_touch.h>
 static struct ft5x0x_i2c_platform_data ft5x0x_pdata = {
@@ -1595,6 +1625,15 @@ static struct i2c_board_info mini210_i2c_devs2[] __initdata = {
 	{
 		I2C_BOARD_INFO("gt80x-ts", 0x55),
 		.platform_data = &goodix_pdata,
+	},
+#endif
+#ifdef CONFIG_TOUCHSCREEN_GT9XX
+	{
+		I2C_BOARD_INFO("Goodix-TS", (0xBA>>1)),
+		.platform_data = &gt9xx_pdata,
+	}, {
+		I2C_BOARD_INFO("Goodix-TS", (0x28>>1)),
+		.platform_data = &gt9xx_pdata,
 	},
 #endif
 #ifdef CONFIG_TOUCHSCREEN_FT5X0X
@@ -1667,6 +1706,9 @@ static void __init mini210_map_io(void)
 	s5p_init_io(NULL, 0, S5P_VA_CHIPID);
 	s3c24xx_init_clocks(24000000);
 	s5pv210_gpiolib_init();
+	/* config UART_1/2_RXD as pull-up */
+	s3c_gpio_setpull(S5PV210_GPA0(4), S3C_GPIO_PULL_UP);
+	s3c_gpio_setpull(S5PV210_GPA1(0), S3C_GPIO_PULL_UP);
 	s3c24xx_init_uarts(mini210_uartcfgs, ARRAY_SIZE(mini210_uartcfgs));
 #ifndef CONFIG_S5P_HIGH_RES_TIMERS
 	s5p_set_timer_source(S5P_PWM2, S5P_PWM4);
@@ -1692,6 +1734,10 @@ static void __init mini210_map_io(void)
 #ifdef CONFIG_TOUCHSCREEN_GOODIX
 	goodix_pdata.screen_width = lcd->width;
 	goodix_pdata.screen_height = lcd->height;
+#endif
+#ifdef CONFIG_TOUCHSCREEN_GT9XX
+	gt9xx_pdata.screen_max_x = lcd->width;
+	gt9xx_pdata.screen_max_y = lcd->height;
 #endif
 #ifdef CONFIG_TOUCHSCREEN_FT5X0X
 	ft5x0x_pdata.screen_max_x = lcd->width;
@@ -1849,6 +1895,11 @@ static void __init mini210_machine_init(void)
 	mini210_dm9000_init();
 #endif
 
+	/* Disable USB PHY for soft reboot */
+	if (__raw_readl(S5P_RST_STAT) & (1 << 3)) {
+		__raw_writel(0, S5P_USB_PHY_CONTROL);
+	}
+
 	platform_add_devices(mini210_devices, ARRAY_SIZE(mini210_devices));
 
 #ifdef CONFIG_ANDROID_PMEM
@@ -1876,6 +1927,10 @@ static void __init mini210_machine_init(void)
 			ARRAY_SIZE(mini210_i2c_devs1));
 	i2c_register_board_info(2, mini210_i2c_devs2,
 			ARRAY_SIZE(mini210_i2c_devs2));
+#if defined(CONFIG_TOUCHSCREEN_1WIRE)
+	onewire_i2c_bdi.irq = gpio_to_irq(S5PV210_GPH1(6));
+	i2c_register_board_info(2, &onewire_i2c_bdi, 1);
+#endif
 #ifdef CONFIG_TOUCHSCREEN_EGALAX
 	i2c_register_board_info(5, i2c_devs5, ARRAY_SIZE(i2c_devs5));
 #endif

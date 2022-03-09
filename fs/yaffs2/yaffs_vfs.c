@@ -245,7 +245,7 @@ static int yaffs_file_flush(struct file *file, fl_owner_t id);
 static int yaffs_file_flush(struct file *file);
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 1, 0))
 static int yaffs_sync_object(struct file *file, loff_t start, loff_t end, int datasync);
 #elif (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 34))
 static int yaffs_sync_object(struct file *file, int datasync);
@@ -290,6 +290,7 @@ static void yaffs_write_super(struct super_block *sb);
 static int yaffs_sync_fs(struct super_block *sb);
 static int yaffs_write_super(struct super_block *sb);
 #endif
+static int yaffs_remount_fs(struct super_block *sb, int *flags, char *data);
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 17))
 static int yaffs_statfs(struct dentry *dentry, struct kstatfs *buf);
@@ -478,6 +479,7 @@ static const struct super_operations yaffs_super_ops = {
 #endif
 	.sync_fs = yaffs_sync_fs,
 	.write_super = yaffs_write_super,
+	.remount_fs = yaffs_remount_fs,
 };
 
 static int yaffs_vfs_setattr(struct inode *inode, struct iattr *attr)
@@ -1838,7 +1840,7 @@ static int yaffs_symlink(struct inode *dir, struct dentry *dentry,
 	return -ENOMEM;
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 1, 0))
 static int yaffs_sync_object(struct file *file, loff_t start, loff_t end, int datasync)
 #elif (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 34))
 static int yaffs_sync_object(struct file *file, int datasync)
@@ -2408,6 +2410,50 @@ static int yaffs_sync_fs(struct super_block *sb)
 	return 0;
 }
 
+static int yaffs_remount_fs(struct super_block *sb, int *flags, char *data)
+{
+	int read_only = 0;
+	struct mtd_info *mtd;
+	struct yaffs_dev *dev = 0;
+
+	/* Get the device */
+	mtd = get_mtd_device(NULL, MINOR(sb->s_dev));
+	if (!mtd) {
+		yaffs_trace(YAFFS_TRACE_ALWAYS,
+			"MTD device #%u doesn't appear to exist",
+			MINOR(sb->s_dev));
+		return 1;
+	}
+
+	/* Check it's NAND */
+	if (mtd->type != MTD_NANDFLASH) {
+		yaffs_trace(YAFFS_TRACE_ALWAYS,
+			"MTD device is not NAND it's type %d",
+			mtd->type);
+		return 1;
+	}
+
+	read_only = ((*flags & MS_RDONLY) != 0);
+	if (!read_only && !(mtd->flags & MTD_WRITEABLE)) {
+		read_only = 1;
+		printk(KERN_INFO
+			"yaffs: mtd is read only, setting superblock read only");
+		*flags |= MS_RDONLY;
+	}
+
+#ifdef CONFIG_YAFFS_CHECKPT_ON_REMOUNT
+	/* Sync with one-shot checkpoint */
+	yaffs_auto_checkpoint |= 4;
+	yaffs_do_sync_fs(sb, 0);
+#endif
+
+	dev = sb->s_fs_info;
+	dev->read_only = read_only;
+
+	return 0;
+}
+
+
 #ifdef YAFFS_USE_OWN_IGET
 
 static struct inode *yaffs_iget(struct super_block *sb, unsigned long ino)
@@ -2666,6 +2712,10 @@ static struct super_block *yaffs_internal_read_super(int yaffs_version,
 		return NULL;
 	}
 
+#ifdef CONFIG_YAFFS_DISABLE_SHORT_CACHE
+	options.no_cache = 1;
+#endif
+
 	sb->s_blocksize = PAGE_CACHE_SIZE;
 	sb->s_blocksize_bits = PAGE_CACHE_SHIFT;
 
@@ -2855,6 +2905,9 @@ static struct super_block *yaffs_internal_read_super(int yaffs_version,
 	param->empty_lost_n_found = 1;
 	param->refresh_period = 500;
 	param->disable_summary = options.disable_summary;
+#ifdef CONFIG_YAFFS_ALWAYS_CHECK_CHUNK_ERASED
+	param->always_check_erased = 1;
+#endif
 
 	if (options.empty_lost_and_found_overridden)
 		param->empty_lost_n_found = options.empty_lost_and_found;

@@ -17,7 +17,6 @@ config SND_S5PV2XX_SOC_WM8960
 	depends on SND_S5PV2XX_SOC && MACH_MINI210
 	select SND_S5PC1XX_I2S
 	select SND_SOC_WM8960_MINI210
-	select SND_SOC_WM8960
 	help
 	  Say Y if you want to add support for SoC audio on MINI210
 	  with the WM8960.

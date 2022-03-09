@@ -368,10 +368,18 @@ static inline void fimc_irq_out(struct fimc_control *ctrl)
 	struct fimc_ctx *ctx;
 	u32 wakeup = 1;
 	int ctx_num = ctrl->out->idxs.active.ctx;
-	ctx = &ctrl->out->ctx[ctx_num];
 
 	/* Interrupt pendding clear */
 	fimc_hwset_clear_irq(ctrl);
+
+	/* check context num */
+	if (ctx_num < 0 || ctx_num >= FIMC_MAX_CTXS) {
+		fimc_err("fimc_irq_out: invalid ctx (ctx=%d)\n", ctx_num);
+		wake_up(&ctrl->wq);
+		return;
+	}
+
+	ctx = &ctrl->out->ctx[ctx_num];
 
 	switch (ctx->overlay.mode) {
 	case FIMC_OVLY_NONE_SINGLE_BUF:
@@ -385,6 +393,8 @@ static inline void fimc_irq_out(struct fimc_control *ctrl)
 		wakeup = fimc_irq_out_dma(ctrl, ctx);
 		break;
 	default:
+		fimc_err("[ctx=%d] fimc_irq_out: wrong overlay.mode (%d)\n",
+				ctx_num, ctx->overlay.mode);
 		break;
 	}
 
@@ -404,12 +414,13 @@ static inline void fimc_irq_cap(struct fimc_control *ctrl)
 		cfg = readl(ctrl->regs + S3C_CIGCTRL);
 		cfg |= (S3C_CIGCTRL_SWRST);
 		writel(cfg, ctrl->regs + S3C_CIGCTRL);
-		udelay(10);
+		udelay(20);
 
 		cfg = readl(ctrl->regs + S3C_CIGCTRL);
 		cfg &= ~S3C_CIGCTRL_SWRST;
 		writel(cfg, ctrl->regs + S3C_CIGCTRL);
 	}
+
 	pp = ((fimc_hwget_frame_count(ctrl) + 2) % 4);
 	if (cap->fmt.field == V4L2_FIELD_INTERLACED_TB) {
 		/* odd value of pp means one frame is made with top/bottom */
@@ -1311,6 +1322,7 @@ static int __devinit fimc_probe(struct platform_device *pdev)
 	struct fimc_control *ctrl;
 	struct clk *srclk;
 	int ret;
+
 	if (!fimc_dev) {
 		fimc_dev = kzalloc(sizeof(*fimc_dev), GFP_KERNEL);
 		if (!fimc_dev) {
@@ -1339,6 +1351,7 @@ static int __devinit fimc_probe(struct platform_device *pdev)
 		return PTR_ERR(ctrl->regulator);
 	}
 #endif //REGULATOR_FIMC
+
 	/* fimc source clock */
 	srclk = clk_get(&pdev->dev, pdata->srclk_name);
 	if (IS_ERR(srclk)) {
@@ -1507,13 +1520,12 @@ int fimc_suspend(struct platform_device *pdev, pm_message_t state)
 
 	if (ctrl->out)
 		fimc_suspend_out(ctrl);
-
 	else if (ctrl->cap)
 		fimc_suspend_cap(ctrl);
 	else
 		ctrl->status = FIMC_OFF_SLEEP;
 
-	if (atomic_read(&ctrl->in_use))
+	if (atomic_read(&ctrl->in_use) && ctrl->status != FIMC_OFF_SLEEP)
 		fimc_clk_en(ctrl, false);
 
 	return 0;
@@ -1628,7 +1640,7 @@ int fimc_resume(struct platform_device *pdev)
 	ctrl = get_fimc_ctrl(id);
 	pdata = to_fimc_plat(ctrl->dev);
 
-	if (atomic_read(&ctrl->in_use))
+	if (atomic_read(&ctrl->in_use) && ctrl->status != FIMC_OFF_SLEEP)
 		fimc_clk_en(ctrl, true);
 
 	if (ctrl->out)
